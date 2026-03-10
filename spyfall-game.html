@@ -1,0 +1,856 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Spyfall — Trò Chơi Gián Điệp</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600;700&display=swap');
+
+        :root {
+            --bg:        #080c14;
+            --surface:   #0d1421;
+            --card:      #111827;
+            --border:    #1e2d45;
+            --border-hi: #2a4060;
+
+            --accent:    #00c8ff;
+            --accent-dim:#004d66;
+            --green:     #00e87a;
+            --green-dim: #00451d;
+            --red:       #ff3d5a;
+            --red-dim:   #4a0010;
+            --yellow:    #ffc940;
+            --yellow-dim:#3d2e00;
+
+            --text:      #d4e0f0;
+            --text-2:    #5a7390;
+            --text-3:    #2e4560;
+
+            --radius-sm: 8px;
+            --radius:    12px;
+            --radius-lg: 18px;
+        }
+
+        * {
+            margin: 0; padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg);
+            min-height: 100vh;
+            color: var(--text);
+            background-image: radial-gradient(circle, #1a2a40 1px, transparent 1px);
+            background-size: 28px 28px;
+        }
+
+        /* ── Layout ── */
+        .container {
+            max-width: 480px;
+            margin: 0 auto;
+            padding: 16px 16px 48px;
+            min-height: 100vh;
+        }
+
+        .screen {
+            display: none;
+            animation: fadeUp 0.25s ease both;
+        }
+        .screen.active { display: block; }
+
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(16px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        /* ── Typography ── */
+        h2 {
+            font-size: 22px; font-weight: 700;
+            letter-spacing: -0.4px;
+            margin-bottom: 6px;
+        }
+        .page-sub {
+            font-size: 13px; color: var(--text-2);
+            margin-bottom: 28px;
+            letter-spacing: 0.2px;
+        }
+        .label {
+            font-size: 11px; font-weight: 600;
+            letter-spacing: 1.2px;
+            text-transform: uppercase;
+            color: var(--text-2);
+            margin-bottom: 10px;
+        }
+
+        /* ── Header bar ── */
+        .page-header {
+            padding: 20px 0 24px;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 24px;
+        }
+
+        /* ── Buttons ── */
+        .btn {
+            width: 100%;
+            padding: 15px 20px;
+            border: none;
+            border-radius: var(--radius);
+            font-family: inherit;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-bottom: 10px;
+            transition: transform 0.15s, opacity 0.15s, box-shadow 0.15s;
+            display: flex; align-items: center; justify-content: center;
+            gap: 8px;
+            letter-spacing: 0.1px;
+        }
+        .btn:active { transform: scale(0.97); opacity: 0.9; }
+
+        .btn-primary {
+            background: var(--accent);
+            color: #000;
+            box-shadow: 0 0 20px rgba(0,200,255,0.25);
+        }
+        .btn-primary:hover { box-shadow: 0 0 28px rgba(0,200,255,0.4); }
+
+        .btn-success {
+            background: var(--green);
+            color: #000;
+            box-shadow: 0 0 20px rgba(0,232,122,0.2);
+        }
+
+        .btn-danger {
+            background: var(--red);
+            color: #fff;
+            box-shadow: 0 0 20px rgba(255,61,90,0.2);
+        }
+
+        .btn-ghost {
+            background: transparent;
+            color: var(--text-2);
+            border: 1px solid var(--border);
+        }
+        .btn-ghost:hover { border-color: var(--border-hi); color: var(--text); }
+
+        .btn-outline-accent {
+            background: transparent;
+            color: var(--accent);
+            border: 1px solid var(--accent-dim);
+        }
+        .btn-outline-accent:hover { background: rgba(0,200,255,0.06); }
+
+        /* ── Player count grid ── */
+        .player-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin-bottom: 24px;
+        }
+        .player-btn {
+            padding: 18px 0;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            background: var(--card);
+            font-family: 'JetBrains Mono', 'Courier New', monospace;
+            font-size: 22px;
+            font-weight: 700;
+            color: var(--text-2);
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .player-btn:active { transform: scale(0.95); }
+        .player-btn.selected {
+            background: rgba(0,200,255,0.08);
+            border-color: var(--accent);
+            color: var(--accent);
+            box-shadow: 0 0 16px rgba(0,200,255,0.15);
+        }
+
+        /* ── Role card ── */
+        .role-card {
+            border-radius: var(--radius-lg);
+            padding: 44px 30px;
+            text-align: center;
+            margin: 20px 0;
+            position: relative;
+            overflow: hidden;
+        }
+        .role-card::before {
+            content: '';
+            position: absolute; inset: 0;
+            opacity: 0.06;
+            background: repeating-linear-gradient(
+                45deg,
+                #fff 0px, #fff 1px, transparent 1px, transparent 12px
+            );
+        }
+        .role-card.spy {
+            background: var(--red-dim);
+            border: 1px solid var(--red);
+            box-shadow: 0 0 40px rgba(255,61,90,0.15);
+        }
+        .role-card.civilian {
+            background: var(--green-dim);
+            border: 1px solid var(--green);
+            box-shadow: 0 0 40px rgba(0,232,122,0.15);
+        }
+        .role-icon { font-size: 52px; margin-bottom: 14px; line-height: 1; }
+        .role-title {
+            font-size: 13px; font-weight: 700;
+            letter-spacing: 2.5px; text-transform: uppercase;
+            margin-bottom: 20px;
+        }
+        .role-card.spy .role-title    { color: var(--red); }
+        .role-card.civilian .role-title { color: var(--green); }
+        .location-label {
+            font-size: 11px; font-weight: 600;
+            letter-spacing: 1.5px; text-transform: uppercase;
+            color: rgba(255,255,255,0.4);
+            margin-bottom: 8px;
+        }
+        .location-value {
+            font-size: 28px; font-weight: 700;
+            letter-spacing: -0.5px;
+            color: #fff;
+        }
+        .spy-hint {
+            font-size: 14px; color: rgba(255,255,255,0.5);
+            line-height: 1.6;
+        }
+
+        /* ── Timer ── */
+        .timer-wrap {
+            text-align: center;
+            padding: 36px 0 32px;
+        }
+        .timer-display {
+            font-family: 'JetBrains Mono', 'Courier New', monospace;
+            font-size: 72px; font-weight: 700;
+            letter-spacing: -2px;
+            color: var(--accent);
+            text-shadow: 0 0 30px rgba(0,200,255,0.4);
+            line-height: 1;
+        }
+        .timer-display.warn   { color: var(--yellow); text-shadow: 0 0 30px rgba(255,201,64,0.4); }
+        .timer-display.danger { color: var(--red);    text-shadow: 0 0 30px rgba(255,61,90,0.4); }
+        .timer-label {
+            font-size: 11px; font-weight: 600;
+            letter-spacing: 2px; text-transform: uppercase;
+            color: var(--text-2);
+            margin-top: 10px;
+        }
+
+        /* ── List items ── */
+        .list-item {
+            background: var(--card);
+            border: 1px solid var(--border);
+            padding: 16px 18px;
+            border-radius: var(--radius);
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: all 0.15s;
+            display: flex; align-items: center; justify-content: space-between;
+        }
+        .list-item:active { transform: scale(0.98); border-color: var(--border-hi); }
+        .list-item:hover  { border-color: var(--border-hi); background: #141e2e; }
+        .list-item-label { font-size: 15px; font-weight: 500; }
+        .list-item-arrow { color: var(--text-3); font-size: 18px; }
+
+        /* ── Chip/badge ── */
+        .chip {
+            display: inline-flex; align-items: center; gap: 5px;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 11px; font-weight: 600;
+            letter-spacing: 0.5px; text-transform: uppercase;
+        }
+        .chip-accent { background: rgba(0,200,255,0.1);  color: var(--accent); border: 1px solid var(--accent-dim); }
+        .chip-green  { background: rgba(0,232,122,0.1);  color: var(--green);  border: 1px solid var(--green-dim); }
+        .chip-red    { background: rgba(255,61,90,0.1);  color: var(--red);    border: 1px solid var(--red-dim); }
+
+        /* ── Stat card ── */
+        .stat-surface {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+            margin-bottom: 14px;
+        }
+        .stat-row {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 14px 18px;
+            border-bottom: 1px solid var(--border);
+            font-size: 14px;
+        }
+        .stat-row:last-child { border-bottom: none; }
+        .stat-row-key { color: var(--text-2); }
+        .stat-row-val { font-weight: 600; color: var(--text); }
+
+        /* ── Win rate grid ── */
+        .winrate-grid {
+            display: grid; grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+        .winrate-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 18px 14px;
+            text-align: center;
+        }
+        .winrate-icon  { font-size: 30px; margin-bottom: 8px; }
+        .winrate-name  { font-size: 12px; color: var(--text-2); margin-bottom: 10px; }
+        .winrate-pct   { font-family: 'JetBrains Mono','Courier New',monospace; font-size: 28px; font-weight: 700; }
+        .winrate-count { font-size: 11px; color: var(--text-3); margin-top: 2px; }
+
+        /* ── Reveal overlay ── */
+        #revealScreen {
+            position: fixed; inset: 0; z-index: 100;
+            background: var(--bg);
+            background-image: radial-gradient(circle, #1a2a40 1px, transparent 1px);
+            background-size: 28px 28px;
+            display: none;
+            flex-direction: column;
+            align-items: center; justify-content: center;
+            text-align: center; cursor: pointer;
+            padding: 40px;
+        }
+        #revealScreen.active { display: flex; }
+        .reveal-ring {
+            width: 120px; height: 120px;
+            border-radius: 50%;
+            border: 2px solid var(--accent);
+            display: flex; align-items: center; justify-content: center;
+            margin-bottom: 32px;
+            box-shadow: 0 0 0 8px rgba(0,200,255,0.06), 0 0 0 16px rgba(0,200,255,0.03);
+            animation: pulse 2.5s ease-in-out infinite;
+        }
+        @keyframes pulse {
+            0%,100% { box-shadow: 0 0 0 8px rgba(0,200,255,0.06), 0 0 0 16px rgba(0,200,255,0.03); }
+            50%      { box-shadow: 0 0 0 14px rgba(0,200,255,0.1),  0 0 0 26px rgba(0,200,255,0.04); }
+        }
+        .reveal-ring-icon  { font-size: 44px; }
+        .reveal-player     { font-size: 28px; font-weight: 700; margin-bottom: 8px; }
+        .reveal-hint       { font-size: 14px; color: var(--text-2); letter-spacing: 0.5px; }
+
+        /* ── Result ── */
+        .result-hero {
+            border-radius: var(--radius-lg);
+            padding: 40px 24px;
+            text-align: center;
+            margin-bottom: 16px;
+            position: relative; overflow: hidden;
+        }
+        .result-hero::before {
+            content:''; position:absolute; inset:0; opacity:0.05;
+            background: repeating-linear-gradient(45deg,#fff 0,#fff 1px,transparent 1px,transparent 12px);
+        }
+        .result-hero.spy {
+            background: var(--red-dim);
+            border: 1px solid var(--red);
+            box-shadow: 0 0 50px rgba(255,61,90,0.12);
+        }
+        .result-hero.civilians {
+            background: var(--green-dim);
+            border: 1px solid var(--green);
+            box-shadow: 0 0 50px rgba(0,232,122,0.12);
+        }
+        .result-icon { font-size: 52px; margin-bottom: 12px; }
+        .result-winner-label {
+            font-size: 11px; font-weight: 700;
+            letter-spacing: 2.5px; text-transform: uppercase;
+            margin-bottom: 4px;
+        }
+        .result-hero.spy .result-winner-label       { color: var(--red); }
+        .result-hero.civilians .result-winner-label { color: var(--green); }
+        .result-winner-name {
+            font-size: 26px; font-weight: 700;
+            color: #fff; margin-bottom: 12px;
+        }
+
+        /* ── Welcome ── */
+        .welcome-hero {
+            padding: 44px 0 36px;
+            text-align: center;
+        }
+        .welcome-logo {
+            width: 80px; height: 80px;
+            background: linear-gradient(135deg, #00c8ff 0%, #006aff 100%);
+            border-radius: 22px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 36px;
+            margin: 0 auto 20px;
+            box-shadow: 0 0 40px rgba(0,200,255,0.25);
+        }
+        .welcome-title {
+            font-size: 32px; font-weight: 700; letter-spacing: -1px;
+            margin-bottom: 6px; color: var(--text);
+        }
+        .welcome-title span { color: var(--accent); }
+        .welcome-sub { font-size: 14px; color: var(--text-2); }
+
+        /* ── Divider ── */
+        .divider { height: 1px; background: var(--border); margin: 20px 0; }
+
+        /* ── Empty state ── */
+        .empty-state { text-align: center; padding: 60px 20px; color: var(--text-2); }
+        .empty-icon  { font-size: 36px; margin-bottom: 12px; }
+        .empty-text  { font-size: 14px; }
+
+        .mt-20 { margin-top: 20px; }
+        .mb-0  { margin-bottom: 0; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+
+    <!-- ═══ WELCOME ═══ -->
+    <div id="welcomeScreen" class="screen active">
+        <div class="welcome-hero">
+            <div class="welcome-logo">🕵️</div>
+            <div class="welcome-title">Spy<span>fall</span></div>
+            <div class="welcome-sub">Trò chơi xã hội gián điệp</div>
+        </div>
+        <button class="btn btn-primary" onclick="showSetup()">＋ &nbsp;Game Mới</button>
+        <button class="btn btn-ghost"   onclick="showHistory()">📋 &nbsp;Lịch Sử</button>
+        <button class="btn btn-ghost mb-0" onclick="showStats()">📊 &nbsp;Thống Kê</button>
+    </div>
+
+    <!-- ═══ SETUP ═══ -->
+    <div id="setupScreen" class="screen">
+        <div class="page-header">
+            <h2>Thiết lập Game</h2>
+            <div class="page-sub">Chọn số người chơi để bắt đầu</div>
+        </div>
+        <div class="label">Số người chơi</div>
+        <div class="player-grid">
+            <button class="player-btn" onclick="selectPlayers(3, this)">3</button>
+            <button class="player-btn" onclick="selectPlayers(4, this)">4</button>
+            <button class="player-btn selected" onclick="selectPlayers(5, this)">5</button>
+            <button class="player-btn" onclick="selectPlayers(6, this)">6</button>
+            <button class="player-btn" onclick="selectPlayers(7, this)">7</button>
+            <button class="player-btn" onclick="selectPlayers(8, this)">8</button>
+        </div>
+        <button class="btn btn-primary" onclick="startGame()">Bắt đầu</button>
+        <button class="btn btn-ghost mb-0" onclick="showWelcome()">← Quay lại</button>
+    </div>
+
+    <!-- ═══ CARD DISPLAY ═══ -->
+    <div id="cardScreen" class="screen">
+        <div id="cardDisplay" class="role-card">
+            <div class="role-icon"  id="cardRoleIcon"></div>
+            <div class="role-title" id="cardRoleLabel"></div>
+            <div id="cardLocationBlock"></div>
+        </div>
+        <button class="btn btn-primary" onclick="nextPlayer()">Đã xem xong →</button>
+    </div>
+
+    <!-- ═══ GAMEPLAY ═══ -->
+    <div id="gameScreen" class="screen">
+        <div class="page-header">
+            <div class="label">Đang chơi</div>
+            <h2>Thời gian còn lại</h2>
+        </div>
+        <div class="timer-wrap">
+            <div class="timer-display" id="timer">8:00</div>
+            <div class="timer-label">PHÚT : GIÂY</div>
+        </div>
+        <button class="btn btn-outline-accent" onclick="toggleTimer()" id="toggleBtn">⏸ &nbsp;Tạm dừng</button>
+        <button class="btn btn-danger mb-0" onclick="endGame()">⬛ &nbsp;Kết thúc Game</button>
+    </div>
+
+    <!-- ═══ END ═══ -->
+    <div id="endScreen" class="screen">
+        <div class="page-header">
+            <h2>Kết thúc Game</h2>
+            <div class="page-sub">Bỏ phiếu để tìm gián điệp</div>
+        </div>
+        <button class="btn btn-primary mb-0" onclick="showVote()">🗳 &nbsp;Bỏ phiếu — Ai là Gián điệp?</button>
+    </div>
+
+    <!-- ═══ VOTE ═══ -->
+    <div id="voteScreen" class="screen">
+        <div class="page-header">
+            <div class="label">Bỏ phiếu</div>
+            <h2>Ai là Gián điệp?</h2>
+            <div class="page-sub">Nhấn vào người bạn nghi ngờ</div>
+        </div>
+        <div id="playerList"></div>
+        <div class="divider"></div>
+        <button class="btn btn-ghost mb-0" onclick="showScreen('endScreen')">← Quay lại</button>
+    </div>
+
+    <!-- ═══ RESULT ═══ -->
+    <div id="resultScreen" class="screen">
+        <div id="resultHero" class="result-hero">
+            <div class="result-icon"        id="resultEmoji"></div>
+            <div class="result-winner-label" id="resultWinnerLabel"></div>
+            <div class="result-winner-name"  id="resultText"></div>
+            <div id="resultSubchip"></div>
+        </div>
+        <div class="stat-surface">
+            <div class="stat-row">
+                <span class="stat-row-key">📍 Địa điểm thực</span>
+                <span class="stat-row-val" id="actualLocation"></span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-row-key">🕵️ Gián điệp</span>
+                <span class="stat-row-val" id="actualSpy"></span>
+            </div>
+        </div>
+        <button class="btn btn-primary"   onclick="saveAndRestart()">💾 &nbsp;Lưu & Chơi lại</button>
+        <button class="btn btn-ghost mb-0" onclick="showWelcome()">← Về trang chủ</button>
+    </div>
+
+    <!-- ═══ HISTORY ═══ -->
+    <div id="historyScreen" class="screen">
+        <div class="page-header">
+            <div class="label">Lịch sử</div>
+            <h2>Các ván đã chơi</h2>
+        </div>
+        <div id="historyList"></div>
+        <div class="divider"></div>
+        <button class="btn btn-ghost mb-0" onclick="showWelcome()">← Quay lại</button>
+    </div>
+
+    <!-- ═══ STATS ═══ -->
+    <div id="statsScreen" class="screen">
+        <div class="page-header">
+            <div class="label">Thống kê</div>
+            <h2>Tổng quan</h2>
+        </div>
+        <div id="statsList"></div>
+        <div class="divider"></div>
+        <button class="btn btn-ghost mb-0" onclick="showWelcome()">← Quay lại</button>
+    </div>
+
+</div>
+
+<!-- ═══ FULLSCREEN REVEAL OVERLAY ═══ -->
+<div id="revealScreen">
+    <div class="reveal-ring">
+        <div class="reveal-ring-icon">👁</div>
+    </div>
+    <div class="reveal-player" id="playerNumber">Người chơi 1</div>
+    <div class="reveal-hint">Nhấn để xem thẻ bí mật</div>
+</div>
+
+<script>
+    // ── State ──
+    let gameState = {
+        playerCount: 5,
+        currentPlayer: 0,
+        spyIndex: -1,
+        location: null,
+        timeRemaining: 480,
+        timerInterval: null,
+        isPaused: false,
+        startTime: null
+    };
+
+    const locations = [
+        'Sân bay','Bệnh viện','Trường học','Ngân hàng','Rạp chiếu phim',
+        'Nhà hàng','Khách sạn','Bãi biển','Siêu thị','Công viên',
+        'Bảo tàng','Thư viện','Sở thú','Ga tàu','Cảng biển',
+        'Căn cứ quân sự','Đại sứ quán','Casino','Spa','Phòng gym',
+        'Công ty','Nhà máy','Tàu ngầm','Trạm vũ trụ','Rạp xiếc',
+        'Đám cưới','Chuyến bay','Tàu cướp biển','Phim trường','Siêu thị điện tử'
+    ];
+
+    const locationWordMap = {
+        'Sân bay': { civilian: 'Cửa khởi hành', spy: 'Quầy check-in' },
+        'Bệnh viện': { civilian: 'Băng ca', spy: 'Phòng cấp cứu' },
+        'Trường học': { civilian: 'Bảng đen', spy: 'Sân trường' },
+        'Ngân hàng': { civilian: 'Két sắt', spy: 'Quầy giao dịch' },
+        'Rạp chiếu phim': { civilian: 'Vé xem phim', spy: 'Bắp rang' },
+        'Nhà hàng': { civilian: 'Thực đơn', spy: 'Bếp trưởng' },
+        'Khách sạn': { civilian: 'Lễ tân', spy: 'Phòng suite' },
+        'Bãi biển': { civilian: 'Cát trắng', spy: 'Kem chống nắng' },
+        'Siêu thị': { civilian: 'Xe đẩy hàng', spy: 'Quầy thanh toán' },
+        'Công viên': { civilian: 'Xích đu', spy: 'Đường chạy bộ' },
+        'Bảo tàng': { civilian: 'Hiện vật', spy: 'Hướng dẫn viên' },
+        'Thư viện': { civilian: 'Kệ sách', spy: 'Thẻ mượn' },
+        'Sở thú': { civilian: 'Chuồng thú', spy: 'Người chăm sóc' },
+        'Ga tàu': { civilian: 'Sân ga', spy: 'Vé tàu' },
+        'Cảng biển': { civilian: 'Cầu cảng', spy: 'Container' },
+        'Căn cứ quân sự': { civilian: 'Doanh trại', spy: 'Lính gác' },
+        'Đại sứ quán': { civilian: 'Hộ chiếu', spy: 'Lãnh sự' },
+        'Casino': { civilian: 'Bàn roulette', spy: 'Máy đánh bạc' },
+        'Spa': { civilian: 'Tinh dầu', spy: 'Massage' },
+        'Phòng gym': { civilian: 'Máy chạy bộ', spy: 'Tạ đòn' },
+        'Công ty': { civilian: 'Phòng họp', spy: 'Thẻ nhân viên' },
+        'Nhà máy': { civilian: 'Dây chuyền', spy: 'Công nhân ca' },
+        'Tàu ngầm': { civilian: 'Kính tiềm vọng', spy: 'Khoang áp suất' },
+        'Trạm vũ trụ': { civilian: 'Buồng khí', spy: 'Không trọng lực' },
+        'Rạp xiếc': { civilian: 'Lều xiếc', spy: 'Chú hề' },
+        'Đám cưới': { civilian: 'Cô dâu', spy: 'Bó hoa cưới' },
+        'Chuyến bay': { civilian: 'Tiếp viên', spy: 'Dây an toàn' },
+        'Tàu cướp biển': { civilian: 'Boong tàu', spy: 'Kho báu' },
+        'Phim trường': { civilian: 'Đạo diễn', spy: 'Máy quay' },
+        'Siêu thị điện tử': { civilian: 'Laptop trưng bày', spy: 'Kệ phụ kiện' }
+    };
+
+    function getPairForLocation(locationName) {
+        return locationWordMap[locationName] || { civilian: 'Địa điểm', spy: 'Khu vực' };
+    }
+
+    // ── Navigation ──
+    function showScreen(id) {
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        document.getElementById(id).classList.add('active');
+        document.getElementById('revealScreen').classList.remove('active');
+    }
+    function showWelcome() { showScreen('welcomeScreen'); }
+    function showSetup()   { showScreen('setupScreen'); }
+
+    // ── Player count ──
+    function selectPlayers(count, btn) {
+        gameState.playerCount = count;
+        document.querySelectorAll('.player-btn').forEach(b => b.classList.remove('selected'));
+        btn.classList.add('selected');
+    }
+
+    // ── Start ──
+    function startGame() {
+        gameState.spyIndex      = Math.floor(Math.random() * gameState.playerCount);
+        gameState.location      = locations[Math.floor(Math.random() * locations.length)];
+        gameState.currentPlayer = 0;
+        gameState.timeRemaining = 480;
+        gameState.isPaused      = false;
+        gameState.startTime     = new Date();
+        showRevealOverlay();
+    }
+
+    // ── Reveal overlay ──
+    function showRevealOverlay() {
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        const overlay = document.getElementById('revealScreen');
+        overlay.classList.add('active');
+        document.getElementById('playerNumber').textContent =
+            `Người chơi ${gameState.currentPlayer + 1}`;
+        overlay.onclick = () => showCard();
+    }
+
+    // ── Card ──
+    function showCard() {
+        document.getElementById('revealScreen').classList.remove('active');
+        const isSpy    = gameState.currentPlayer === gameState.spyIndex;
+        const pair     = getPairForLocation(gameState.location);
+        const display  = document.getElementById('cardDisplay');
+        const roleIcon = document.getElementById('cardRoleIcon');
+        const roleLabel= document.getElementById('cardRoleLabel');
+        const locBlock = document.getElementById('cardLocationBlock');
+
+        if (isSpy) {
+            display.className    = 'role-card spy';
+            roleIcon.textContent = '🕵️';
+            roleLabel.textContent= 'Gián Điệp (Nội Gián)';
+            locBlock.innerHTML   = `<div class="spy-hint">Từ của gián điệp: <strong>${pair.spy}</strong><br>Chúc may mắn</div>`;
+        } else {
+            display.className    = 'role-card civilian';
+            roleIcon.textContent = '👥';
+            roleLabel.textContent= 'Dân Thường (Thường Dân)';
+            locBlock.innerHTML   = `
+                <div class="location-label">Địa điểm bí mật</div>
+                <div class="location-value">${gameState.location}</div>
+                <div class="location-label" style="margin-top:14px;">Từ của dân thường</div>
+                <div class="location-value" style="font-size:24px;">${pair.civilian}</div>`;
+        }
+        showScreen('cardScreen');
+    }
+
+    function nextPlayer() {
+        gameState.currentPlayer++;
+        if (gameState.currentPlayer >= gameState.playerCount) {
+            startTimer();
+            showScreen('gameScreen');
+        } else {
+            showRevealOverlay();
+        }
+    }
+
+    // ── Timer ──
+    function startTimer() {
+        updateTimerDisplay();
+        gameState.timerInterval = setInterval(() => {
+            if (!gameState.isPaused && gameState.timeRemaining > 0) {
+                gameState.timeRemaining--;
+                updateTimerDisplay();
+                if (gameState.timeRemaining === 0) {
+                    clearInterval(gameState.timerInterval);
+                    endGame();
+                }
+            }
+        }, 1000);
+    }
+
+    function updateTimerDisplay() {
+        const el   = document.getElementById('timer');
+        const mins = Math.floor(gameState.timeRemaining / 60);
+        const secs = gameState.timeRemaining % 60;
+        el.textContent = `${mins}:${secs.toString().padStart(2,'0')}`;
+        el.className   = 'timer-display';
+        if (gameState.timeRemaining <= 60)       el.classList.add('danger');
+        else if (gameState.timeRemaining <= 120) el.classList.add('warn');
+    }
+
+    function toggleTimer() {
+        gameState.isPaused = !gameState.isPaused;
+        const btn = document.getElementById('toggleBtn');
+        btn.innerHTML = gameState.isPaused
+            ? '▶ &nbsp;Tiếp tục'
+            : '⏸ &nbsp;Tạm dừng';
+    }
+
+    function endGame() {
+        if (gameState.timerInterval) clearInterval(gameState.timerInterval);
+        showScreen('endScreen');
+    }
+
+    // ── Vote ──
+    function showVote() {
+        const list = document.getElementById('playerList');
+        list.innerHTML = '';
+        for (let i = 0; i < gameState.playerCount; i++) {
+            const el = document.createElement('div');
+            el.className = 'list-item';
+            el.innerHTML = `
+                <div class="list-item-label">Người chơi ${i + 1}</div>
+                <div class="list-item-arrow">›</div>`;
+            el.onclick = () => evaluateVote(i);
+            list.appendChild(el);
+        }
+        showScreen('voteScreen');
+    }
+
+    function evaluateVote(idx) {
+        showResult(idx === gameState.spyIndex, idx === gameState.spyIndex ? 'civilians' : 'spy');
+    }
+
+    // ── Result ──
+    function showResult(isCorrect, winner) {
+        const hero  = document.getElementById('resultHero');
+        const emoji = document.getElementById('resultEmoji');
+        const label = document.getElementById('resultWinnerLabel');
+        const text  = document.getElementById('resultText');
+        const sub   = document.getElementById('resultSubchip');
+
+        if (winner === 'spy') {
+            hero.className    = 'result-hero spy';
+            emoji.textContent = '🕵️';
+            label.textContent = 'Kết quả';
+            text.textContent  = 'Gián Điệp (Nội Gián) Thắng!';
+        } else {
+            hero.className    = 'result-hero civilians';
+            emoji.textContent = '👥';
+            label.textContent = 'Kết quả';
+            text.textContent  = 'Dân Thường (Thường Dân) Thắng!';
+        }
+        sub.innerHTML = isCorrect
+            ? `<span class="chip chip-green">✓ Bỏ phiếu đúng</span>`
+            : `<span class="chip chip-red">✕ Bỏ phiếu sai</span>`;
+
+        document.getElementById('actualLocation').textContent = gameState.location;
+        document.getElementById('actualSpy').textContent = `Người chơi ${gameState.spyIndex + 1}`;
+
+        // Persist
+        const game = {
+            date: new Date().toISOString(),
+            playerCount: gameState.playerCount,
+            location: gameState.location,
+            winner,
+            duration: 480 - gameState.timeRemaining
+        };
+        const history = JSON.parse(localStorage.getItem('spyfallHistory') || '[]');
+        history.unshift(game);
+        localStorage.setItem('spyfallHistory', JSON.stringify(history.slice(0, 50)));
+
+        showScreen('resultScreen');
+    }
+
+    function saveAndRestart() { showSetup(); }
+
+    // ── History ──
+    function showHistory() {
+        const history = JSON.parse(localStorage.getItem('spyfallHistory') || '[]');
+        const el = document.getElementById('historyList');
+        if (!history.length) {
+            el.innerHTML = `<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-text">Chưa có lịch sử game</div></div>`;
+        } else {
+            el.innerHTML = history.map(g => {
+                const d    = new Date(g.date);
+                const date = d.toLocaleDateString('vi-VN');
+                const time = d.toLocaleTimeString('vi-VN', {hour:'2-digit',minute:'2-digit'});
+                const dur  = `${Math.floor(g.duration/60)}:${(g.duration%60).toString().padStart(2,'0')}`;
+                const chip = g.winner === 'spy'
+                    ? `<span class="chip chip-red">🕵️ Spy thắng</span>`
+                    : `<span class="chip chip-green">👥 Dân thường thắng</span>`;
+                return `
+                <div class="stat-surface" style="margin-bottom:10px;">
+                    <div class="stat-row">
+                        <span class="stat-row-key">${date} ${time}</span>
+                        <span class="stat-row-val">⏱ ${dur}</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-row-key">👥 ${g.playerCount} người</span>
+                    </div>
+                    <div class="stat-row">${chip}</div>
+                </div>`;
+            }).join('');
+        }
+        showScreen('historyScreen');
+    }
+
+    // ── Stats ──
+    function showStats() {
+        const history = JSON.parse(localStorage.getItem('spyfallHistory') || '[]');
+        const el = document.getElementById('statsList');
+        if (!history.length) {
+            el.innerHTML = `<div class="empty-state"><div class="empty-icon">📊</div><div class="empty-text">Chưa có dữ liệu thống kê</div></div>`;
+        } else {
+            const total  = history.length;
+            const spyW   = history.filter(g => g.winner === 'spy').length;
+            const civW   = total - spyW;
+            const avgDur = history.reduce((s, g) => s + g.duration, 0) / total;
+            el.innerHTML = `
+            <div class="stat-surface">
+                <div class="stat-row">
+                    <span class="stat-row-key">Tổng số game</span>
+                    <span class="stat-row-val">${total}</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-row-key">Thời gian trung bình</span>
+                    <span class="stat-row-val">${Math.floor(avgDur/60)} phút ${Math.round(avgDur%60)} giây</span>
+                </div>
+            </div>
+            <div class="label mt-20" style="margin-top:20px;">Tỷ lệ thắng</div>
+            <div class="winrate-grid">
+                <div class="winrate-card">
+                    <div class="winrate-icon">🕵️</div>
+                    <div class="winrate-name">Gián điệp</div>
+                    <div class="winrate-pct" style="color:var(--red)">${((spyW/total)*100).toFixed(1)}%</div>
+                    <div class="winrate-count">${spyW} / ${total} game</div>
+                </div>
+                <div class="winrate-card">
+                    <div class="winrate-icon">👥</div>
+                    <div class="winrate-name">Dân thường</div>
+                    <div class="winrate-pct" style="color:var(--green)">${((civW/total)*100).toFixed(1)}%</div>
+                    <div class="winrate-count">${civW} / ${total} game</div>
+                </div>
+            </div>`;
+        }
+        showScreen('statsScreen');
+    }
+
+    // Init
+    updateTimerDisplay();
+</script>
+</body>
+</html>
