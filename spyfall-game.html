@@ -606,12 +606,17 @@
     };
 
     const firebaseConfig = window.SPYFALL_FIREBASE_CONFIG;
+    let firebaseInitError = null;
     let db = null;
     if (window.firebase && firebaseConfig && firebaseConfig.apiKey) {
-        if (!firebase.apps.length) {
-            firebase.initializeApp(firebaseConfig);
+        try {
+            if (!firebase.apps.length) {
+                firebase.initializeApp(firebaseConfig);
+            }
+            db = firebase.database();
+        } catch (error) {
+            firebaseInitError = error;
         }
-        db = firebase.database();
     }
 
     const locations = [
@@ -658,6 +663,12 @@
 
     function getPairForLocation(locationName) {
         return locationWordMap[locationName] || { civilian: 'Địa điểm', spy: 'Khu vực' };
+    }
+
+    function showOnlineError(error, action = 'thực hiện thao tác online') {
+        const message = error?.message || String(error || 'Unknown error');
+        const dbUrl = firebaseConfig?.databaseURL || '(chưa cấu hình)';
+        alert(`Không thể ${action}.\nLỗi: ${message}\n\nKiểm tra lại Realtime Database đã tạo và databaseURL:\n${dbUrl}`);
     }
 
     function $(id) {
@@ -758,43 +769,49 @@
 
     async function createRoom() {
         if (!db) {
-            alert('Chưa có cấu hình Firebase. Hãy tạo file firebase-config.js từ firebase-config.example.js');
+            const reason = firebaseInitError?.message || 'Chưa có cấu hình hoặc khởi tạo Firebase thất bại.';
+            alert(`Online Room chưa sẵn sàng.\n${reason}\n\nKiểm tra file firebase-config.js và Realtime Database.`);
             return;
         }
 
-        const roomId = generateRoomId();
-        const playerId = getOrCreatePlayerId();
-        const playerName = normalizeName($('playerNameInput').value);
-        gameState.myName = playerName;
+        try {
+            const roomId = generateRoomId();
+            const playerId = getOrCreatePlayerId();
+            const playerName = normalizeName($('playerNameInput').value);
+            gameState.myName = playerName;
 
-        const roomRef = db.ref(`rooms/${roomId}`);
-        await roomRef.set({
-            status: 'lobby',
-            hostId: playerId,
-            playerCount: gameState.playerCount,
-            currentPlayer: 0,
-            spyIndex: -1,
-            location: null,
-            timeRemaining: 480,
-            isPaused: false,
-            votes: null,
-            players: {
-                [playerId]: {
-                    name: playerName,
-                    joinedAt: Date.now(),
+            const roomRef = db.ref(`rooms/${roomId}`);
+            await roomRef.set({
+                status: 'lobby',
+                hostId: playerId,
+                playerCount: gameState.playerCount,
+                currentPlayer: 0,
+                spyIndex: -1,
+                location: null,
+                timeRemaining: 480,
+                isPaused: false,
+                votes: null,
+                players: {
+                    [playerId]: {
+                        name: playerName,
+                        joinedAt: Date.now(),
+                    },
                 },
-            },
-            createdAt: Date.now(),
-        });
+                createdAt: Date.now(),
+            });
 
-        await connectRoom(roomId, roomRef, playerId);
-        $('roomCodeInput').value = roomId;
-        alert(`Đã tạo phòng: ${roomId}`);
+            await connectRoom(roomId, roomRef, playerId);
+            $('roomCodeInput').value = roomId;
+            alert(`Đã tạo phòng: ${roomId}`);
+        } catch (error) {
+            showOnlineError(error, 'tạo phòng');
+        }
     }
 
     async function joinRoom() {
         if (!db) {
-            alert('Chưa có cấu hình Firebase. Hãy tạo file firebase-config.js từ firebase-config.example.js');
+            const reason = firebaseInitError?.message || 'Chưa có cấu hình hoặc khởi tạo Firebase thất bại.';
+            alert(`Online Room chưa sẵn sàng.\n${reason}\n\nKiểm tra file firebase-config.js và Realtime Database.`);
             return;
         }
 
@@ -804,29 +821,33 @@
             return;
         }
 
-        const roomRef = db.ref(`rooms/${roomId}`);
-        const snapshot = await roomRef.get();
-        if (!snapshot.exists()) {
-            alert('Không tìm thấy phòng.');
-            return;
+        try {
+            const roomRef = db.ref(`rooms/${roomId}`);
+            const snapshot = await roomRef.once('value');
+            if (!snapshot.exists()) {
+                alert('Không tìm thấy phòng.');
+                return;
+            }
+
+            const room = snapshot.val();
+            if (room.status !== 'lobby') {
+                alert('Phòng đã bắt đầu hoặc kết thúc, không thể tham gia.');
+                return;
+            }
+
+            const playerId = getOrCreatePlayerId();
+            const playerName = normalizeName($('playerNameInput').value);
+            gameState.myName = playerName;
+
+            await roomRef.child(`players/${playerId}`).set({
+                name: playerName,
+                joinedAt: Date.now(),
+            });
+
+            await connectRoom(roomId, roomRef, playerId);
+        } catch (error) {
+            showOnlineError(error, 'tham gia phòng');
         }
-
-        const room = snapshot.val();
-        if (room.status !== 'lobby') {
-            alert('Phòng đã bắt đầu hoặc kết thúc, không thể tham gia.');
-            return;
-        }
-
-        const playerId = getOrCreatePlayerId();
-        const playerName = normalizeName($('playerNameInput').value);
-        gameState.myName = playerName;
-
-        await roomRef.child(`players/${playerId}`).set({
-            name: playerName,
-            joinedAt: Date.now(),
-        });
-
-        await connectRoom(roomId, roomRef, playerId);
     }
 
     async function connectRoom(roomId, roomRef, playerId) {
