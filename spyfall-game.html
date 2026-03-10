@@ -425,6 +425,22 @@
             color: var(--text-2);
             margin-bottom: 6px;
         }
+        .room-inline {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+        .status-dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 8px;
+            background: var(--text-3);
+        }
+        .status-online .status-dot { background: var(--green); }
+        .status-offline .status-dot { background: var(--red); }
         .room-line strong { color: var(--text); }
         .hidden { display: none !important; }
 
@@ -459,9 +475,13 @@
             <div class="label">Online Room</div>
             <input id="playerNameInput" class="input" placeholder="Tên của bạn" maxlength="24" />
             <input id="roomCodeInput" class="input" placeholder="Mã phòng (ví dụ: ABC123)" maxlength="6" />
-            <button class="btn btn-outline-accent" onclick="createRoom()">Tạo phòng</button>
+            <div class="room-inline">
+                <button class="btn btn-outline-accent" onclick="createRoom()">Tạo phòng</button>
+                <button id="copyRoomBtn" class="btn btn-ghost hidden" onclick="copyRoomCode()">Copy mã</button>
+            </div>
             <button class="btn btn-outline-accent" onclick="joinRoom()">Tham gia phòng</button>
             <button id="leaveRoomBtn" class="btn btn-ghost hidden" onclick="leaveRoom()">Rời phòng</button>
+            <div id="realtimeStatus" class="room-line status-offline"><span class="status-dot"></span>Realtime: chưa kết nối</div>
             <div id="roomInfo" class="room-line">Chưa tham gia phòng</div>
             <div id="playerListInfo" class="room-line"></div>
         </div>
@@ -590,6 +610,9 @@
         roomId: null,
         roomRef: null,
         roomUnsub: null,
+        connectionRef: null,
+        connectionUnsub: null,
+        connected: false,
         myPlayerId: null,
         myName: '',
         isHost: false,
@@ -711,10 +734,72 @@
         return myIndex(room) === (room?.currentPlayer ?? -1);
     }
 
+    function setRealtimeStatus(isConnected, text) {
+        const statusEl = $('realtimeStatus');
+        if (!statusEl) return;
+        statusEl.classList.toggle('status-online', !!isConnected);
+        statusEl.classList.toggle('status-offline', !isConnected);
+        statusEl.innerHTML = `<span class="status-dot"></span>${text}`;
+    }
+
+    function setupConnectionWatcher() {
+        if (!db) {
+            setRealtimeStatus(false, 'Realtime: Firebase chưa sẵn sàng');
+            return;
+        }
+        if (gameState.connectionRef && gameState.connectionUnsub) {
+            gameState.connectionRef.off('value', gameState.connectionUnsub);
+        }
+
+        gameState.connectionRef = db.ref('.info/connected');
+        gameState.connectionUnsub = gameState.connectionRef.on('value', (snap) => {
+            gameState.connected = snap.val() === true;
+            if (gameState.mode !== 'online') {
+                setRealtimeStatus(gameState.connected, gameState.connected ? 'Realtime: sẵn sàng' : 'Realtime: mất kết nối');
+                return;
+            }
+            setRealtimeStatus(gameState.connected, gameState.connected ? 'Realtime: đã kết nối' : 'Realtime: đang reconnect...');
+        });
+    }
+
+    function clearConnectionWatcher() {
+        if (gameState.connectionRef && gameState.connectionUnsub) {
+            gameState.connectionRef.off('value', gameState.connectionUnsub);
+        }
+        gameState.connectionRef = null;
+        gameState.connectionUnsub = null;
+        gameState.connected = false;
+    }
+
+    async function copyRoomCode() {
+        const roomId = gameState.roomId || ($('roomCodeInput').value || '').trim().toUpperCase();
+        if (!roomId) {
+            alert('Chưa có mã phòng để copy.');
+            return;
+        }
+
+        try {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                await navigator.clipboard.writeText(roomId);
+            } else {
+                const tempInput = document.createElement('input');
+                tempInput.value = roomId;
+                document.body.appendChild(tempInput);
+                tempInput.select();
+                document.execCommand('copy');
+                document.body.removeChild(tempInput);
+            }
+            alert(`Đã copy mã phòng: ${roomId}`);
+        } catch (error) {
+            showOnlineError(error, 'copy mã phòng');
+        }
+    }
+
     function renderRoomPanel() {
         const info = $('roomInfo');
         const playersInfo = $('playerListInfo');
         const leaveBtn = $('leaveRoomBtn');
+        const copyBtn = $('copyRoomBtn');
         const room = gameState.roomData;
         const startBtn = document.querySelector('#setupScreen .btn.btn-primary');
 
@@ -722,7 +807,9 @@
             info.textContent = 'Chưa tham gia phòng';
             playersInfo.textContent = '';
             leaveBtn.classList.add('hidden');
+            copyBtn.classList.add('hidden');
             startBtn.textContent = 'Bắt đầu (Local)';
+            setRealtimeStatus(false, db ? 'Realtime: chưa vào phòng' : 'Realtime: Firebase chưa sẵn sàng');
             return;
         }
 
@@ -730,6 +817,12 @@
         info.innerHTML = `Phòng: <strong>${gameState.roomId}</strong> • Vai trò: <strong>${gameState.isHost ? 'Host' : 'Thành viên'}</strong>`;
         playersInfo.innerHTML = `Người chơi (${players.length}/${room.playerCount || gameState.playerCount}): <strong>${players.map(p => p.name).join(', ')}</strong>`;
         leaveBtn.classList.remove('hidden');
+        copyBtn.classList.remove('hidden');
+        if (!gameState.connected) {
+            setRealtimeStatus(false, 'Realtime: đang reconnect...');
+        } else {
+            setRealtimeStatus(true, 'Realtime: đã kết nối');
+        }
         startBtn.textContent = gameState.isHost ? 'Bắt đầu game Online' : 'Đang chờ host bắt đầu';
     }
 
@@ -852,6 +945,7 @@
 
     async function connectRoom(roomId, roomRef, playerId) {
         leaveRoom(false);
+        setupConnectionWatcher();
 
         gameState.mode = 'online';
         gameState.roomId = roomId;
@@ -1333,6 +1427,7 @@
     $('playerNameInput').addEventListener('change', e => {
         localStorage.setItem('spyfallDisplayName', e.target.value || '');
     });
+    setupConnectionWatcher();
     renderRoomPanel();
     updateTimerDisplay();
 </script>

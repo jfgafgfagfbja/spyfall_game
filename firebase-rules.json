@@ -1,0 +1,70 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "rooms": {
+      "$roomId": {
+        ".read": "data.child('createdAt').isNumber() && data.child('createdAt').val() > now - 86400000",
+        ".write": "(!data.exists() && newData.child('createdAt').isNumber()) || (data.exists() && data.child('createdAt').isNumber() && data.child('createdAt').val() > now - 86400000)",
+        "status": {
+          ".validate": "newData.isString() && (newData.val() === 'lobby' || newData.val() === 'reveal' || newData.val() === 'playing' || newData.val() === 'vote' || newData.val() === 'result')"
+        },
+        "hostId": {
+          ".validate": "newData.isString() && newData.val().matches(/^p_[a-z0-9]{8}$/)"
+        },
+        "playerCount": {
+          ".validate": "newData.isNumber() && newData.val() >= 3 && newData.val() <= 8"
+        },
+        "currentPlayer": {
+          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 8"
+        },
+        "spyIndex": {
+          ".validate": "newData.isNumber() && newData.val() >= -1 && newData.val() <= 8"
+        },
+        "location": {
+          ".validate": "newData.val() === null || (newData.isString() && newData.val().length > 0 && newData.val().length <= 64)"
+        },
+        "timeRemaining": {
+          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 480"
+        },
+        "isPaused": {
+          ".validate": "newData.isBoolean()"
+        },
+        "winner": {
+          ".validate": "newData.val() === null || (newData.isString() && (newData.val() === 'spy' || newData.val() === 'civilians'))"
+        },
+        "suspectedIndex": {
+          ".validate": "newData.val() === null || (newData.isNumber() && newData.val() >= 0 && newData.val() <= 8)"
+        },
+        "voteCorrect": {
+          ".validate": "newData.val() === null || newData.isBoolean()"
+        },
+        "createdAt": {
+          ".validate": "newData.isNumber()"
+        },
+        "players": {
+          "$playerId": {
+            ".validate": "$playerId.matches(/^p_[a-z0-9]{8}$/)",
+            "name": {
+              ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 24"
+            },
+            "joinedAt": {
+              ".validate": "newData.isNumber()"
+            },
+            "$other": {
+              ".validate": false
+            }
+          }
+        },
+        "votes": {
+          "$voterId": {
+            ".validate": "$voterId.matches(/^p_[a-z0-9]{8}$/) && newData.isNumber() && newData.val() >= 0 && newData.val() <= 8"
+          }
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
+    }
+  }
+}
