@@ -444,6 +444,39 @@
         .room-line strong { color: var(--text); }
         .hidden { display: none !important; }
 
+        /* ── Chat ── */
+        .chat-messages {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 10px 12px;
+            max-height: 180px;
+            overflow-y: auto;
+            margin-bottom: 10px;
+        }
+        .chat-message {
+            font-size: 13px;
+            line-height: 1.35;
+            color: var(--text);
+            margin-bottom: 8px;
+            word-break: break-word;
+        }
+        .chat-meta {
+            font-size: 11px;
+            color: var(--text-2);
+            margin-top: 2px;
+        }
+        .chat-input-row {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 8px;
+        }
+        .chat-send-btn {
+            width: auto;
+            margin-bottom: 10px;
+            padding: 12px 16px;
+        }
+
         .mt-20 { margin-top: 20px; }
         .mb-0  { margin-bottom: 0; }
     </style>
@@ -521,6 +554,16 @@
         </div>
         <button class="btn btn-outline-accent" onclick="toggleTimer()" id="toggleBtn">⏸ &nbsp;Tạm dừng</button>
         <button class="btn btn-danger mb-0" onclick="endGame()">⬛ &nbsp;Kết thúc Game</button>
+
+        <div id="chatPanel" class="room-panel mt-20 hidden">
+            <div class="label">Chat trong phòng</div>
+            <div id="chatMessages" class="chat-messages"></div>
+            <div class="chat-input-row">
+                <input id="chatInput" class="input" placeholder="Nhập tin nhắn..." maxlength="200" />
+                <button id="chatSendBtn" class="btn btn-outline-accent chat-send-btn" onclick="sendChatMessage()">Gửi</button>
+            </div>
+            <div id="chatHint" class="room-line mb-0">Chỉ hoạt động khi đang ở Online Room.</div>
+        </div>
     </div>
 
     <!-- ═══ END ═══ -->
@@ -606,6 +649,9 @@
         roomId: null,
         roomRef: null,
         roomUnsub: null,
+        chatRef: null,
+        chatQuery: null,
+        chatUnsub: null,
         connectionRef: null,
         connectionUnsub: null,
         connected: false,
@@ -791,6 +837,106 @@
         gameState.connected = false;
     }
 
+    function escapeHtml(value) {
+        return String(value ?? '')
+            .replaceAll('&', '&amp;')
+            .replaceAll('<', '&lt;')
+            .replaceAll('>', '&gt;')
+            .replaceAll('"', '&quot;')
+            .replaceAll("'", '&#39;');
+    }
+
+    function renderChatVisibility() {
+        const panel = $('chatPanel');
+        if (!panel) return;
+        const online = gameState.mode === 'online' && !!gameState.roomId && !!gameState.roomRef;
+        panel.classList.toggle('hidden', !online);
+
+        const hint = $('chatHint');
+        if (hint) {
+            if (!online) hint.textContent = 'Chỉ hoạt động khi đang ở Online Room.';
+            else if (!gameState.connected) hint.textContent = 'Realtime: đang reconnect...';
+            else hint.textContent = 'Tin nhắn sẽ cập nhật realtime cho cả phòng.';
+        }
+    }
+
+    function resetChatUI() {
+        const messages = $('chatMessages');
+        if (messages) messages.innerHTML = '';
+    }
+
+    function appendChatMessage(message) {
+        const messages = $('chatMessages');
+        if (!messages) return;
+
+        const name = escapeHtml(message?.name || 'Ẩn danh');
+        const text = escapeHtml(message?.text || '');
+        const ts = Number(message?.ts || Date.now());
+        const time = new Date(ts).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+
+        const row = document.createElement('div');
+        row.className = 'chat-message';
+        row.innerHTML = `<strong>${name}:</strong> ${text}<div class="chat-meta">${time}</div>`;
+
+        const nearBottom = messages.scrollTop + messages.clientHeight >= messages.scrollHeight - 40;
+        messages.appendChild(row);
+        if (nearBottom) messages.scrollTop = messages.scrollHeight;
+    }
+
+    function setupChatWatcher() {
+        renderChatVisibility();
+        if (!db || gameState.mode !== 'online' || !gameState.roomRef) return;
+
+        if (gameState.chatQuery && gameState.chatUnsub) {
+            gameState.chatQuery.off('child_added', gameState.chatUnsub);
+        }
+
+        resetChatUI();
+        gameState.chatRef = gameState.roomRef.child('chat');
+        gameState.chatQuery = gameState.chatRef.limitToLast(50);
+        gameState.chatUnsub = gameState.chatQuery.on('child_added', (snap) => {
+            appendChatMessage(snap.val());
+        });
+    }
+
+    function clearChatWatcher() {
+        if (gameState.chatQuery && gameState.chatUnsub) {
+            gameState.chatQuery.off('child_added', gameState.chatUnsub);
+        }
+        gameState.chatRef = null;
+        gameState.chatQuery = null;
+        gameState.chatUnsub = null;
+        resetChatUI();
+        renderChatVisibility();
+    }
+
+    async function sendChatMessage() {
+        if (gameState.mode !== 'online' || !gameState.roomRef || !db) {
+            alert('Bạn cần vào Online Room để chat.');
+            return;
+        }
+        if (!/^p_[a-z0-9]{8}$/.test(gameState.myPlayerId || '')) {
+            alert('Không xác định được Player ID hợp lệ để chat.');
+            return;
+        }
+        const input = $('chatInput');
+        const raw = (input?.value || '').trim();
+        if (!raw) return;
+        const text = raw.length > 200 ? raw.slice(0, 200) : raw;
+
+        try {
+            await gameState.roomRef.child('chat').push({
+                playerId: gameState.myPlayerId,
+                name: normalizeName(gameState.myName),
+                text,
+                ts: Date.now(),
+            });
+            if (input) input.value = '';
+        } catch (error) {
+            showOnlineError(error, 'gửi chat');
+        }
+    }
+
     async function copyRoomCode() {
         const roomId = gameState.roomId || ($('roomCodeInput').value || '').trim().toUpperCase();
         if (!roomId) {
@@ -973,6 +1119,8 @@
         gameState.roomRef = roomRef;
         gameState.myPlayerId = playerId;
 
+        setupChatWatcher();
+
         gameState.roomUnsub = roomRef.on('value', async (snapshot) => {
             if (!snapshot.exists()) {
                 alert('Phòng đã bị đóng.');
@@ -995,6 +1143,7 @@
 
             renderRoomPanel();
             updateTimerDisplay();
+            renderChatVisibility();
 
             if (room.status === 'lobby') {
                 clearOnlineTimerLoop();
@@ -1020,6 +1169,9 @@
         if (gameState.roomUnsub && gameState.roomRef) {
             gameState.roomRef.off('value', gameState.roomUnsub);
         }
+
+        clearChatWatcher();
+        clearConnectionWatcher();
         gameState.roomUnsub = null;
         gameState.roomRef = null;
         gameState.roomData = null;
@@ -1059,6 +1211,7 @@
         document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
         document.getElementById(id).classList.add('active');
         document.getElementById('revealScreen').classList.remove('active');
+        renderChatVisibility();
     }
     function showWelcome() { showScreen('welcomeScreen'); }
     function showSetup()   { showScreen('setupScreen'); }
@@ -1449,6 +1602,15 @@
     $('playerNameInput').addEventListener('change', e => {
         localStorage.setItem('spyfallDisplayName', e.target.value || '');
     });
+    const chatInput = $('chatInput');
+    if (chatInput) {
+        chatInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                sendChatMessage();
+            }
+        });
+    }
     setupConnectionWatcher();
     renderRoomPanel();
     updateTimerDisplay();

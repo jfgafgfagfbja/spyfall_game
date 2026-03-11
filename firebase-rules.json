@@ -64,6 +64,14 @@
             ".validate": "$voterId.matches(/^p_[a-z0-9]{8}$/) && newData.isNumber() && newData.val() >= 0 && newData.val() <= 8"
           }
         },
+        "chat": {
+          "$messageId": {
+            ".validate": "newData.hasChildren(['playerId','name','text','ts']) && newData.child('playerId').isString() && newData.child('playerId').val().matches(/^p_[a-z0-9]{8}$/) && newData.child('name').isString() && newData.child('name').val().length > 0 && newData.child('name').val().length <= 24 && newData.child('text').isString() && newData.child('text').val().length > 0 && newData.child('text').val().length <= 200 && newData.child('ts').isNumber() && newData.child('ts').val() <= now + 60000",
+            "$other": {
+              ".validate": false
+            }
+          }
+        },
         "$other": {
           ".validate": false
         }
