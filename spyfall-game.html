@@ -874,7 +874,8 @@
 
         const name = escapeHtml(message?.name || 'Ẩn danh');
         const text = escapeHtml(message?.text || '');
-        const ts = Number(message?.ts || Date.now());
+        const rawTs = message?.ts;
+        const ts = typeof rawTs === 'number' ? rawTs : Date.now();
         const time = new Date(ts).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
 
         const row = document.createElement('div');
@@ -934,12 +935,11 @@
         const text = raw.length > 200 ? raw.slice(0, 200) : raw;
 
         try {
-            const serverTimestamp = window.firebase?.database?.ServerValue?.TIMESTAMP;
             await gameState.roomRef.child('chat').push({
                 playerId: gameState.myPlayerId,
                 name: normalizeName(gameState.myName),
                 text,
-                ts: serverTimestamp ?? Date.now(),
+                ts: Date.now(),
             });
             if (input) input.value = '';
         } catch (error) {
