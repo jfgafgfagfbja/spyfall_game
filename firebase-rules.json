@@ -65,6 +65,7 @@
           }
         },
         "chat": {
+          ".write": "root.child('rooms').child($roomId).exists() && (!root.child('rooms').child($roomId).child('createdAt').exists() || (root.child('rooms').child($roomId).child('createdAt').isNumber() && root.child('rooms').child($roomId).child('createdAt').val() > now - 86400000))",
           "$messageId": {
             ".validate": "newData.hasChildren(['playerId','name','text','ts']) && newData.child('playerId').isString() && newData.child('playerId').val().matches(/^p_[a-z0-9]{8}$/) && newData.child('name').isString() && newData.child('name').val().length > 0 && newData.child('name').val().length <= 24 && newData.child('text').isString() && newData.child('text').val().length > 0 && newData.child('text').val().length <= 200 && newData.child('ts').isNumber() && newData.child('ts').val() > 0",
             "$other": {
