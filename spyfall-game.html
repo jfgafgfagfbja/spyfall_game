@@ -934,11 +934,12 @@
         const text = raw.length > 200 ? raw.slice(0, 200) : raw;
 
         try {
+            const serverTimestamp = window.firebase?.database?.ServerValue?.TIMESTAMP;
             await gameState.roomRef.child('chat').push({
                 playerId: gameState.myPlayerId,
                 name: normalizeName(gameState.myName),
                 text,
-                ts: Date.now(),
+                ts: serverTimestamp ?? Date.now(),
             });
             if (input) input.value = '';
         } catch (error) {
