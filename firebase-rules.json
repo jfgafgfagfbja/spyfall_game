@@ -4,8 +4,8 @@
     ".write": false,
     "rooms": {
       "$roomId": {
-        ".read": "data.child('createdAt').isNumber() && data.child('createdAt').val() > now - 86400000",
-        ".write": "(!data.exists() && newData.child('createdAt').isNumber()) || (data.exists() && data.child('createdAt').isNumber() && data.child('createdAt').val() > now - 86400000)",
+        ".read": "root.child('rooms').child($roomId).child('createdAt').isNumber() && root.child('rooms').child($roomId).child('createdAt').val() > now - 86400000",
+        ".write": "(!root.child('rooms').child($roomId).exists() && newData.child('createdAt').isNumber()) || (root.child('rooms').child($roomId).exists() && root.child('rooms').child($roomId).child('createdAt').isNumber() && root.child('rooms').child($roomId).child('createdAt').val() > now - 86400000)",
         "status": {
           ".validate": "newData.isString() && (newData.val() === 'lobby' || newData.val() === 'reveal' || newData.val() === 'playing' || newData.val() === 'vote' || newData.val() === 'result')"
         },
