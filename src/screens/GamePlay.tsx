@@ -46,7 +46,7 @@ const GamePlay: React.FC<GamePlayProps> = ({navigation}) => {
         <Text style={styles.instructionTitle}>Cách chơi:</Text>
         <Text style={styles.instructionText}>
           • Dân thường: Đặt câu hỏi để tìm ra Gián điệp{'\n'}
-          • Gián điệp: Trả lời câu hỏi và đoán địa điểm{'\n'}
+          • Gián điệp: Trả lời câu hỏi để không bị phát hiện{'\n'}
           • Đừng hỏi quá rõ ràng hoặc quá mơ hồ!
         </Text>
       </View>

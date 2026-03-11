@@ -554,10 +554,6 @@
         </div>
         <div class="stat-surface">
             <div class="stat-row">
-                <span class="stat-row-key">📍 Địa điểm thực</span>
-                <span class="stat-row-val" id="actualLocation"></span>
-            </div>
-            <div class="stat-row">
                 <span class="stat-row-key">🕵️ Gián điệp</span>
                 <span class="stat-row-val" id="actualSpy"></span>
             </div>
@@ -621,7 +617,8 @@
         playerCount: 5,
         currentPlayer: 0,
         spyIndex: -1,
-        location: null,
+        civilianWord: null,
+        spyWord: null,
         timeRemaining: 480,
         timerInterval: null,
         isPaused: false,
@@ -642,50 +639,73 @@
         }
     }
 
-    const locations = [
-        'Sân bay','Bệnh viện','Trường học','Ngân hàng','Rạp chiếu phim',
-        'Nhà hàng','Khách sạn','Bãi biển','Siêu thị','Công viên',
-        'Bảo tàng','Thư viện','Sở thú','Ga tàu','Cảng biển',
-        'Căn cứ quân sự','Đại sứ quán','Casino','Spa','Phòng gym',
-        'Công ty','Nhà máy','Tàu ngầm','Trạm vũ trụ','Rạp xiếc',
-        'Đám cưới','Chuyến bay','Tàu cướp biển','Phim trường','Siêu thị điện tử'
+    const wordPairs = [
+        // Nhóm 1: Đồ ăn & Thức uống (Dễ)
+        { civilian: 'Bún chả', spy: 'Bún thịt nướng' },
+        { civilian: 'Phở', spy: 'Hủ tiếu' },
+        { civilian: 'Trà sữa', spy: 'Trà đào' },
+        { civilian: 'Cà phê', spy: 'Ca cao' },
+        { civilian: 'Pizza', spy: 'Bánh xèo' },
+        { civilian: 'Kem', spy: 'Sữa chua' },
+        { civilian: 'Coca Cola', spy: 'Pepsi' },
+        { civilian: 'Bánh mì', spy: 'Bánh bao' },
+        { civilian: 'Trứng ốp la', spy: 'Trứng luộc' },
+        { civilian: 'Lẩu', spy: 'Nướng' },
+
+        // Nhóm 2: Đồ vật & Gia dụng (Trung bình)
+        { civilian: 'Máy tính bàn', spy: 'Laptop' },
+        { civilian: 'Điện thoại', spy: 'Máy tính bảng' },
+        { civilian: 'Chổi', spy: 'Máy hút bụi' },
+        { civilian: 'Bàn chải đánh răng', spy: 'Tăm bông' },
+        { civilian: 'Gối', spy: 'Đệm (Nệm)' },
+        { civilian: 'Sách', spy: 'Cuốn vở' },
+        { civilian: 'Bút bi', spy: 'Bút chì' },
+        { civilian: 'Ô (Dù)', spy: 'Áo mưa' },
+        { civilian: 'Đèn pin', spy: 'Đèn ngủ' },
+        { civilian: 'Gương', spy: 'Cửa sổ' },
+
+        // Nhóm 3: Động vật & Thiên nhiên (Thú vị)
+        { civilian: 'Con hổ', spy: 'Con báo' },
+        { civilian: 'Con chó', spy: 'Con sói' },
+        { civilian: 'Con mèo', spy: 'Con hổ' },
+        { civilian: 'Con vịt', spy: 'Con thiên nga' },
+        { civilian: 'Cá mập', spy: 'Cá voi' },
+        { civilian: 'Rừng', spy: 'Công viên' },
+        { civilian: 'Biển', spy: 'Hồ' },
+        { civilian: 'Mặt trời', spy: 'Mặt trăng' },
+        { civilian: 'Mưa', spy: 'Tuyết' },
+        { civilian: 'Hoa hồng', spy: 'Hoa hướng dương' },
+
+        // Nhóm 4: Hoạt động & Nghề nghiệp (Khó)
+        { civilian: 'Đi bộ', spy: 'Chạy bộ' },
+        { civilian: 'Xem phim', spy: 'Nghe nhạc' },
+        { civilian: 'Ca sĩ', spy: 'Diễn viên' },
+        { civilian: 'Bác sĩ', spy: 'Y tá' },
+        { civilian: 'Giáo viên', spy: 'Gia sư' },
+        { civilian: 'Nấu ăn', spy: 'Rửa bát' },
+        { civilian: 'Đá bóng', spy: 'Bóng rổ' },
+        { civilian: 'Chụp ảnh', spy: 'Quay phim' },
+        { civilian: 'Ngủ', spy: 'Nằm mơ' },
+        { civilian: 'Học bài', spy: 'Làm việc' },
+
+        // Nhóm 5: Khái niệm trừu tượng (Thách thức)
+        { civilian: 'Tình yêu', spy: 'Tình bạn' },
+        { civilian: 'Giàu có', spy: 'Hạnh phúc' },
+        { civilian: 'Thông minh', spy: 'Khôn lỏi' },
+        { civilian: 'Bí mật', spy: 'Lời nói dối' },
+        { civilian: 'Mùa hè', spy: 'Mùa thu' },
+        { civilian: 'Quá khứ', spy: 'Tương lai' },
+        { civilian: 'Thủ đô', spy: 'Thành phố' },
+        { civilian: 'Giấc mơ', spy: 'Ác mộng' },
+        { civilian: 'Thời gian', spy: 'Đồng hồ' },
+        { civilian: 'Trò chơi', spy: 'Cuộc thi' },
     ];
 
-    const locationWordMap = {
-        'Sân bay': { civilian: 'Cửa khởi hành', spy: 'Quầy check-in' },
-        'Bệnh viện': { civilian: 'Băng ca', spy: 'Phòng cấp cứu' },
-        'Trường học': { civilian: 'Bảng đen', spy: 'Sân trường' },
-        'Ngân hàng': { civilian: 'Két sắt', spy: 'Quầy giao dịch' },
-        'Rạp chiếu phim': { civilian: 'Vé xem phim', spy: 'Bắp rang' },
-        'Nhà hàng': { civilian: 'Thực đơn', spy: 'Bếp trưởng' },
-        'Khách sạn': { civilian: 'Lễ tân', spy: 'Phòng suite' },
-        'Bãi biển': { civilian: 'Cát trắng', spy: 'Kem chống nắng' },
-        'Siêu thị': { civilian: 'Xe đẩy hàng', spy: 'Quầy thanh toán' },
-        'Công viên': { civilian: 'Xích đu', spy: 'Đường chạy bộ' },
-        'Bảo tàng': { civilian: 'Hiện vật', spy: 'Hướng dẫn viên' },
-        'Thư viện': { civilian: 'Kệ sách', spy: 'Thẻ mượn' },
-        'Sở thú': { civilian: 'Chuồng thú', spy: 'Người chăm sóc' },
-        'Ga tàu': { civilian: 'Sân ga', spy: 'Vé tàu' },
-        'Cảng biển': { civilian: 'Cầu cảng', spy: 'Container' },
-        'Căn cứ quân sự': { civilian: 'Doanh trại', spy: 'Lính gác' },
-        'Đại sứ quán': { civilian: 'Hộ chiếu', spy: 'Lãnh sự' },
-        'Casino': { civilian: 'Bàn roulette', spy: 'Máy đánh bạc' },
-        'Spa': { civilian: 'Tinh dầu', spy: 'Massage' },
-        'Phòng gym': { civilian: 'Máy chạy bộ', spy: 'Tạ đòn' },
-        'Công ty': { civilian: 'Phòng họp', spy: 'Thẻ nhân viên' },
-        'Nhà máy': { civilian: 'Dây chuyền', spy: 'Công nhân ca' },
-        'Tàu ngầm': { civilian: 'Kính tiềm vọng', spy: 'Khoang áp suất' },
-        'Trạm vũ trụ': { civilian: 'Buồng khí', spy: 'Không trọng lực' },
-        'Rạp xiếc': { civilian: 'Lều xiếc', spy: 'Chú hề' },
-        'Đám cưới': { civilian: 'Cô dâu', spy: 'Bó hoa cưới' },
-        'Chuyến bay': { civilian: 'Tiếp viên', spy: 'Dây an toàn' },
-        'Tàu cướp biển': { civilian: 'Boong tàu', spy: 'Kho báu' },
-        'Phim trường': { civilian: 'Đạo diễn', spy: 'Máy quay' },
-        'Siêu thị điện tử': { civilian: 'Laptop trưng bày', spy: 'Kệ phụ kiện' }
-    };
-
-    function getPairForLocation(locationName) {
-        return locationWordMap[locationName] || { civilian: 'Địa điểm', spy: 'Khu vực' };
+    function getRandomWordPair() {
+        if (!Array.isArray(wordPairs) || wordPairs.length === 0) {
+            return { civilian: 'Từ của dân thường', spy: 'Từ của gián điệp' };
+        }
+        return wordPairs[Math.floor(Math.random() * wordPairs.length)];
     }
 
     function showOnlineError(error, action = 'thực hiện thao tác online') {
@@ -880,7 +900,8 @@
                 playerCount: gameState.playerCount,
                 currentPlayer: 0,
                 spyIndex: -1,
-                location: null,
+                civilianWord: null,
+                spyWord: null,
                 timeRemaining: 480,
                 isPaused: false,
                 votes: null,
@@ -966,7 +987,8 @@
             gameState.playerCount = room.playerCount || 5;
             gameState.currentPlayer = room.currentPlayer || 0;
             gameState.spyIndex = room.spyIndex ?? -1;
-            gameState.location = room.location || null;
+            gameState.civilianWord = room.civilianWord || null;
+            gameState.spyWord = room.spyWord || null;
             gameState.timeRemaining = room.timeRemaining ?? 480;
             gameState.isPaused = !!room.isPaused;
             gameState.hasVoted = !!(room.votes && room.votes[gameState.myPlayerId] !== undefined);
@@ -1067,12 +1089,13 @@
             }
 
             const spyIndex = Math.floor(Math.random() * players.length);
-            const location = locations[Math.floor(Math.random() * locations.length)];
+            const pair = getRandomWordPair();
             await gameState.roomRef.update({
                 status: 'reveal',
                 currentPlayer: 0,
                 spyIndex,
-                location,
+                civilianWord: pair.civilian,
+                spyWord: pair.spy,
                 timeRemaining: 480,
                 isPaused: false,
                 votes: null,
@@ -1083,8 +1106,10 @@
             return;
         }
 
+        const pair = getRandomWordPair();
         gameState.spyIndex      = Math.floor(Math.random() * gameState.playerCount);
-        gameState.location      = locations[Math.floor(Math.random() * locations.length)];
+        gameState.civilianWord  = pair.civilian;
+        gameState.spyWord       = pair.spy;
         gameState.currentPlayer = 0;
         gameState.timeRemaining = 480;
         gameState.isPaused      = false;
@@ -1121,7 +1146,7 @@
 
         document.getElementById('revealScreen').classList.remove('active');
         const isSpy    = gameState.currentPlayer === gameState.spyIndex;
-        const pair     = getPairForLocation(gameState.location);
+        const word     = isSpy ? gameState.spyWord : gameState.civilianWord;
         const display  = document.getElementById('cardDisplay');
         const roleIcon = document.getElementById('cardRoleIcon');
         const roleLabel= document.getElementById('cardRoleLabel');
@@ -1131,16 +1156,14 @@
             display.className    = 'role-card spy';
             roleIcon.textContent = '🕵️';
             roleLabel.textContent= 'Gián Điệp (Nội Gián)';
-            locBlock.innerHTML   = `<div class="spy-hint">Từ của gián điệp: <strong>${pair.spy}</strong><br>Chúc may mắn</div>`;
+            locBlock.innerHTML   = `<div class="spy-hint">Từ của gián điệp: <strong>${word || '—'}</strong><br>Chúc may mắn</div>`;
         } else {
             display.className    = 'role-card civilian';
             roleIcon.textContent = '👥';
             roleLabel.textContent= 'Dân Thường (Thường Dân)';
             locBlock.innerHTML   = `
-                <div class="location-label">Địa điểm bí mật</div>
-                <div class="location-value">${gameState.location}</div>
-                <div class="location-label" style="margin-top:14px;">Từ của dân thường</div>
-                <div class="location-value" style="font-size:24px;">${pair.civilian}</div>`;
+                <div class="location-label">Từ của dân thường</div>
+                <div class="location-value" style="font-size:24px;">${word || '—'}</div>`;
         }
         showScreen('cardScreen');
     }
@@ -1301,14 +1324,12 @@
             ? `<span class="chip chip-green">✓ Bỏ phiếu đúng</span>`
             : `<span class="chip chip-red">✕ Bỏ phiếu sai</span>`;
 
-        document.getElementById('actualLocation').textContent = gameState.location;
         document.getElementById('actualSpy').textContent = `Người chơi ${gameState.spyIndex + 1}`;
 
         // Persist
         const game = {
             date: new Date().toISOString(),
             playerCount: gameState.playerCount,
-            location: gameState.location,
             winner,
             duration: 480 - gameState.timeRemaining
         };
@@ -1336,7 +1357,8 @@
                 status: 'lobby',
                 currentPlayer: 0,
                 spyIndex: -1,
-                location: null,
+                civilianWord: null,
+                spyWord: null,
                 timeRemaining: 480,
                 isPaused: false,
                 votes: null,

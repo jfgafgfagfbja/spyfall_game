@@ -9,9 +9,6 @@ import CardReveal from '../screens/CardReveal';
 import GamePlay from '../screens/GamePlay';
 import GameEnd from '../screens/GameEnd';
 import GameResult from '../screens/GameResult';
-import LocationListSelection from '../screens/LocationListSelection';
-import LocationManagement from '../screens/LocationManagement';
-import LocationListDetail from '../screens/LocationListDetail';
 import History from '../screens/History';
 import Statistics from '../screens/Statistics';
 
@@ -25,23 +22,6 @@ const GameStack = () => {
         name="GameSetup" 
         component={GameSetup}
         options={{title: 'Game Mới'}}
-      />
-      <Stack.Screen 
-        name="LocationListSelection" 
-        component={LocationListSelection}
-        options={{title: 'Chọn Danh Sách'}}
-      />
-      <Stack.Screen
-        name="LocationManagement"
-        component={LocationManagement}
-        options={{title: 'Quản Lý Danh Sách'}}
-      />
-      <Stack.Screen
-        name="LocationListDetail"
-        component={LocationListDetail}
-        options={({route}: any) => ({
-          title: (route.params as any)?.listName || 'Chi Tiết Danh Sách',
-        })}
       />
       <Stack.Screen 
         name="CardReveal" 

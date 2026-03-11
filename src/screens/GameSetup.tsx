@@ -46,11 +46,7 @@ const GameSetup: React.FC<GameSetupProps> = ({navigation}) => {
         return trimmed.length > 0 ? trimmed : `Người chơi ${index + 1}`;
       });
 
-      setupGame(
-        playerCount,
-        {id: 'word-pairs', name: 'Word Pairs', locations: [], isDefault: true},
-        normalizedPlayerNames,
-      );
+      setupGame(playerCount, normalizedPlayerNames);
       navigation.navigate('CardReveal');
     } catch (error: any) {
       Alert.alert('Lỗi', error.message);

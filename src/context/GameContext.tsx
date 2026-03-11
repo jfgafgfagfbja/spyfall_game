@@ -1,5 +1,5 @@
 import React, {createContext, useContext, useState, useEffect, useCallback} from 'react';
-import {Game, GameState, LocationList, PlayerCard, GameResult} from '../types';
+import {Game, GameState, PlayerCard, GameResult} from '../types';
 import {gameEngine} from '../engine/GameEngine';
 import {gameRepository} from '../data/GameRepository';
 
@@ -11,7 +11,6 @@ interface GameContextType {
   isTimerPaused: boolean;
   setupGame: (
     playerCount: number,
-    locationList: LocationList,
     playerNames: string[],
   ) => void;
   revealCard: (playerIndex: number) => PlayerCard;
@@ -52,15 +51,10 @@ export const GameProvider: React.FC<{children: React.ReactNode}> = ({children}) 
 
   const setupGame = useCallback((
     playerCount: number,
-    locationList: LocationList,
     playerNames: string[],
   ) => {
     if (playerCount < 3 || playerCount > 8) {
       throw new Error('Số người chơi phải từ 3 đến 8');
-    }
-
-    if (locationList.locations.length === 0) {
-      throw new Error('Danh sách địa điểm không được rỗng');
     }
 
     const normalizedPlayerNames = Array.from({length: playerCount}, (_, index) => {
@@ -68,11 +62,7 @@ export const GameProvider: React.FC<{children: React.ReactNode}> = ({children}) 
       return name && name.length > 0 ? name : `Người chơi ${index + 1}`;
     });
 
-    const game = gameEngine.createGame(
-      playerCount,
-      locationList,
-      normalizedPlayerNames,
-    );
+    const game = gameEngine.createGame(playerCount, normalizedPlayerNames);
     setCurrentGame(game);
     setCurrentPlayerIndex(0);
     setGameState(GameState.RevealingCards);

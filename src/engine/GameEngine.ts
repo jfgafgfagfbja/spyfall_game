@@ -1,4 +1,4 @@
-import {Game, GameWinner, Location, LocationList, PlayerCard, PlayerRole} from '../types';
+import {Game, GameWinner, PlayerCard, PlayerRole} from '../types';
 
 type Difficulty = 'easy' | 'medium' | 'hard';
 
@@ -6,41 +6,69 @@ export class GameEngine {
   private readonly defaultDifficulty: Difficulty = 'hard';
 
   private readonly wordPairs: Array<{civilian: string; spy: string}> = [
-    {civilian: 'Cửa khởi hành', spy: 'Quầy check-in'},
-    {civilian: 'Băng ca', spy: 'Phòng cấp cứu'},
-    {civilian: 'Bảng đen', spy: 'Sân trường'},
-    {civilian: 'Két sắt', spy: 'Quầy giao dịch'},
-    {civilian: 'Vé xem phim', spy: 'Bắp rang'},
-    {civilian: 'Thực đơn', spy: 'Bếp trưởng'},
-    {civilian: 'Lễ tân', spy: 'Phòng suite'},
-    {civilian: 'Cát trắng', spy: 'Kem chống nắng'},
-    {civilian: 'Xe đẩy hàng', spy: 'Quầy thanh toán'},
-    {civilian: 'Xích đu', spy: 'Đường chạy bộ'},
-    {civilian: 'Hiện vật', spy: 'Hướng dẫn viên'},
-    {civilian: 'Kệ sách', spy: 'Thẻ mượn'},
-    {civilian: 'Chuồng thú', spy: 'Người chăm sóc'},
-    {civilian: 'Sân ga', spy: 'Vé tàu'},
-    {civilian: 'Cầu cảng', spy: 'Container'},
-    {civilian: 'Doanh trại', spy: 'Lính gác'},
-    {civilian: 'Hộ chiếu', spy: 'Lãnh sự'},
-    {civilian: 'Bàn roulette', spy: 'Máy đánh bạc'},
-    {civilian: 'Tinh dầu', spy: 'Massage'},
-    {civilian: 'Máy chạy bộ', spy: 'Tạ đòn'},
-    {civilian: 'Phòng họp', spy: 'Thẻ nhân viên'},
-    {civilian: 'Dây chuyền', spy: 'Công nhân ca'},
-    {civilian: 'Kính tiềm vọng', spy: 'Khoang áp suất'},
-    {civilian: 'Buồng khí', spy: 'Không trọng lực'},
-    {civilian: 'Lều xiếc', spy: 'Chú hề'},
-    {civilian: 'Cô dâu', spy: 'Bó hoa cưới'},
-    {civilian: 'Tiếp viên', spy: 'Dây an toàn'},
-    {civilian: 'Boong tàu', spy: 'Kho báu'},
-    {civilian: 'Đạo diễn', spy: 'Máy quay'},
-    {civilian: 'Laptop trưng bày', spy: 'Kệ phụ kiện'},
+    // Nhóm 1: Đồ ăn & Thức uống (Dễ)
+    {civilian: 'Bún chả', spy: 'Bún thịt nướng'},
+    {civilian: 'Phở', spy: 'Hủ tiếu'},
+    {civilian: 'Trà sữa', spy: 'Trà đào'},
+    {civilian: 'Cà phê', spy: 'Ca cao'},
+    {civilian: 'Pizza', spy: 'Bánh xèo'},
+    {civilian: 'Kem', spy: 'Sữa chua'},
+    {civilian: 'Coca Cola', spy: 'Pepsi'},
+    {civilian: 'Bánh mì', spy: 'Bánh bao'},
+    {civilian: 'Trứng ốp la', spy: 'Trứng luộc'},
+    {civilian: 'Lẩu', spy: 'Nướng'},
+
+    // Nhóm 2: Đồ vật & Gia dụng (Trung bình)
+    {civilian: 'Máy tính bàn', spy: 'Laptop'},
+    {civilian: 'Điện thoại', spy: 'Máy tính bảng'},
+    {civilian: 'Chổi', spy: 'Máy hút bụi'},
+    {civilian: 'Bàn chải đánh răng', spy: 'Tăm bông'},
+    {civilian: 'Gối', spy: 'Đệm (Nệm)'},
+    {civilian: 'Sách', spy: 'Cuốn vở'},
+    {civilian: 'Bút bi', spy: 'Bút chì'},
+    {civilian: 'Ô (Dù)', spy: 'Áo mưa'},
+    {civilian: 'Đèn pin', spy: 'Đèn ngủ'},
+    {civilian: 'Gương', spy: 'Cửa sổ'},
+
+    // Nhóm 3: Động vật & Thiên nhiên (Thú vị)
+    {civilian: 'Con hổ', spy: 'Con báo'},
+    {civilian: 'Con chó', spy: 'Con sói'},
+    {civilian: 'Con mèo', spy: 'Con hổ'},
+    {civilian: 'Con vịt', spy: 'Con thiên nga'},
+    {civilian: 'Cá mập', spy: 'Cá voi'},
+    {civilian: 'Rừng', spy: 'Công viên'},
+    {civilian: 'Biển', spy: 'Hồ'},
+    {civilian: 'Mặt trời', spy: 'Mặt trăng'},
+    {civilian: 'Mưa', spy: 'Tuyết'},
+    {civilian: 'Hoa hồng', spy: 'Hoa hướng dương'},
+
+    // Nhóm 4: Hoạt động & Nghề nghiệp (Khó)
+    {civilian: 'Đi bộ', spy: 'Chạy bộ'},
+    {civilian: 'Xem phim', spy: 'Nghe nhạc'},
+    {civilian: 'Ca sĩ', spy: 'Diễn viên'},
+    {civilian: 'Bác sĩ', spy: 'Y tá'},
+    {civilian: 'Giáo viên', spy: 'Gia sư'},
+    {civilian: 'Nấu ăn', spy: 'Rửa bát'},
+    {civilian: 'Đá bóng', spy: 'Bóng rổ'},
+    {civilian: 'Chụp ảnh', spy: 'Quay phim'},
+    {civilian: 'Ngủ', spy: 'Nằm mơ'},
+    {civilian: 'Học bài', spy: 'Làm việc'},
+
+    // Nhóm 5: Khái niệm trừu tượng (Thách thức)
+    {civilian: 'Tình yêu', spy: 'Tình bạn'},
+    {civilian: 'Giàu có', spy: 'Hạnh phúc'},
+    {civilian: 'Thông minh', spy: 'Khôn lỏi'},
+    {civilian: 'Bí mật', spy: 'Lời nói dối'},
+    {civilian: 'Mùa hè', spy: 'Mùa thu'},
+    {civilian: 'Quá khứ', spy: 'Tương lai'},
+    {civilian: 'Thủ đô', spy: 'Thành phố'},
+    {civilian: 'Giấc mơ', spy: 'Ác mộng'},
+    {civilian: 'Thời gian', spy: 'Đồng hồ'},
+    {civilian: 'Trò chơi', spy: 'Cuộc thi'},
   ];
 
   createGame(
     playerCount: number,
-    locationList: LocationList,
     playerNames: string[],
   ): Game {
     const spyIndex = this.selectRandomSpy(playerCount);

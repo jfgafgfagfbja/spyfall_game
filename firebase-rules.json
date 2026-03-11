@@ -21,7 +21,10 @@
         "spyIndex": {
           ".validate": "newData.isNumber() && newData.val() >= -1 && newData.val() <= 8"
         },
-        "location": {
+        "civilianWord": {
+          ".validate": "newData.val() === null || (newData.isString() && newData.val().length > 0 && newData.val().length <= 64)"
+        },
+        "spyWord": {
           ".validate": "newData.val() === null || (newData.isString() && newData.val().length > 0 && newData.val().length <= 64)"
         },
         "timeRemaining": {

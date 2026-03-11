@@ -18,18 +18,6 @@ export enum GameState {
 }
 
 // Models
-export interface Location {
-  id: string;
-  name: string;
-}
-
-export interface LocationList {
-  id: string;
-  name: string;
-  locations: Location[];
-  isDefault: boolean;
-}
-
 export interface Game {
   id: string;
   playerCount: number;
