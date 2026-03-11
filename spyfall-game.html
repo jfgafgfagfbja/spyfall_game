@@ -554,16 +554,17 @@
         </div>
         <button class="btn btn-outline-accent" onclick="toggleTimer()" id="toggleBtn">⏸ &nbsp;Tạm dừng</button>
         <button class="btn btn-danger mb-0" onclick="endGame()">⬛ &nbsp;Kết thúc Game</button>
+    </div>
 
-        <div id="chatPanel" class="room-panel mt-20 hidden">
-            <div class="label">Chat trong phòng</div>
-            <div id="chatMessages" class="chat-messages"></div>
-            <div class="chat-input-row">
-                <input id="chatInput" class="input" placeholder="Nhập tin nhắn..." maxlength="200" />
-                <button id="chatSendBtn" class="btn btn-outline-accent chat-send-btn" onclick="sendChatMessage()">Gửi</button>
-            </div>
-            <div id="chatHint" class="room-line mb-0">Chỉ hoạt động khi đang ở Online Room.</div>
+    <!-- ═══ CHAT (GLOBAL) ═══ -->
+    <div id="chatPanel" class="room-panel mt-20 hidden">
+        <div class="label">Chat trong phòng</div>
+        <div id="chatMessages" class="chat-messages"></div>
+        <div class="chat-input-row">
+            <input id="chatInput" class="input" placeholder="Nhập tin nhắn..." maxlength="200" />
+            <button id="chatSendBtn" class="btn btn-outline-accent chat-send-btn" onclick="sendChatMessage()">Gửi</button>
         </div>
+        <div id="chatHint" class="room-line mb-0">Chỉ hoạt động khi đang ở Online Room.</div>
     </div>
 
     <!-- ═══ END ═══ -->
@@ -839,18 +840,20 @@
 
     function escapeHtml(value) {
         return String(value ?? '')
-            .replaceAll('&', '&amp;')
-            .replaceAll('<', '&lt;')
-            .replaceAll('>', '&gt;')
-            .replaceAll('"', '&quot;')
-            .replaceAll("'", '&#39;');
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
     }
 
     function renderChatVisibility() {
         const panel = $('chatPanel');
         if (!panel) return;
         const online = gameState.mode === 'online' && !!gameState.roomId && !!gameState.roomRef;
-        panel.classList.toggle('hidden', !online);
+        const activeId = document.querySelector('.screen.active')?.id || '';
+        const allowed = activeId === 'setupScreen' || activeId === 'gameScreen';
+        panel.classList.toggle('hidden', !(online && allowed));
 
         const hint = $('chatHint');
         if (hint) {
@@ -894,9 +897,15 @@
         resetChatUI();
         gameState.chatRef = gameState.roomRef.child('chat');
         gameState.chatQuery = gameState.chatRef.limitToLast(50);
-        gameState.chatUnsub = gameState.chatQuery.on('child_added', (snap) => {
-            appendChatMessage(snap.val());
-        });
+        gameState.chatUnsub = gameState.chatQuery.on(
+            'child_added',
+            (snap) => {
+                appendChatMessage(snap.val());
+            },
+            (error) => {
+                showOnlineError(error, 'đọc chat');
+            }
+        );
     }
 
     function clearChatWatcher() {
@@ -1121,47 +1130,57 @@
 
         setupChatWatcher();
 
-        gameState.roomUnsub = roomRef.on('value', async (snapshot) => {
-            if (!snapshot.exists()) {
-                alert('Phòng đã bị đóng.');
-                leaveRoom(false);
-                showSetup();
-                return;
+        gameState.roomUnsub = roomRef.on(
+            'value',
+            async (snapshot) => {
+                try {
+                    if (!snapshot.exists()) {
+                        alert('Phòng đã bị đóng.');
+                        leaveRoom(false);
+                        showSetup();
+                        return;
+                    }
+
+                    const room = snapshot.val();
+                    gameState.roomData = room;
+                    gameState.isHost = room.hostId === gameState.myPlayerId;
+                    gameState.playerCount = room.playerCount || 5;
+                    gameState.currentPlayer = room.currentPlayer || 0;
+                    gameState.spyIndex = room.spyIndex ?? -1;
+                    gameState.civilianWord = room.civilianWord || null;
+                    gameState.spyWord = room.spyWord || null;
+                    gameState.timeRemaining = room.timeRemaining ?? 480;
+                    gameState.isPaused = !!room.isPaused;
+                    gameState.hasVoted = !!(room.votes && room.votes[gameState.myPlayerId] !== undefined);
+
+                    renderRoomPanel();
+                    updateTimerDisplay();
+                    renderChatVisibility();
+
+                    if (room.status === 'lobby') {
+                        clearOnlineTimerLoop();
+                        showScreen('setupScreen');
+                    } else if (room.status === 'reveal') {
+                        showRevealOverlay();
+                    } else if (room.status === 'playing') {
+                        ensureOnlineTimerLoop(room);
+                        showScreen('gameScreen');
+                    } else if (room.status === 'vote') {
+                        clearOnlineTimerLoop();
+                        showVote();
+                        await finalizeVoteIfReady(room);
+                    } else if (room.status === 'result') {
+                        clearOnlineTimerLoop();
+                        showResultFromRoom(room);
+                    }
+                } catch (error) {
+                    showOnlineError(error, 'đồng bộ phòng');
+                }
+            },
+            (error) => {
+                showOnlineError(error, 'kết nối phòng');
             }
-
-            const room = snapshot.val();
-            gameState.roomData = room;
-            gameState.isHost = room.hostId === gameState.myPlayerId;
-            gameState.playerCount = room.playerCount || 5;
-            gameState.currentPlayer = room.currentPlayer || 0;
-            gameState.spyIndex = room.spyIndex ?? -1;
-            gameState.civilianWord = room.civilianWord || null;
-            gameState.spyWord = room.spyWord || null;
-            gameState.timeRemaining = room.timeRemaining ?? 480;
-            gameState.isPaused = !!room.isPaused;
-            gameState.hasVoted = !!(room.votes && room.votes[gameState.myPlayerId] !== undefined);
-
-            renderRoomPanel();
-            updateTimerDisplay();
-            renderChatVisibility();
-
-            if (room.status === 'lobby') {
-                clearOnlineTimerLoop();
-                showScreen('setupScreen');
-            } else if (room.status === 'reveal') {
-                showRevealOverlay();
-            } else if (room.status === 'playing') {
-                ensureOnlineTimerLoop(room);
-                showScreen('gameScreen');
-            } else if (room.status === 'vote') {
-                clearOnlineTimerLoop();
-                showVote();
-                await finalizeVoteIfReady(room);
-            } else if (room.status === 'result') {
-                clearOnlineTimerLoop();
-                showResultFromRoom(room);
-            }
-        });
+        );
     }
 
     function leaveRoom(showMessage = true) {
